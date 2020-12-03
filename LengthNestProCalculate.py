@@ -19,7 +19,7 @@ def length_nest_pro(part_lengths, b, part_names, spacing, left_waste, right_wast
     # left_waste = .12
     # right_waste = 4.75
     # stock_length = 288
-    pattern_max = 3  # TODO remove this feature
+    pattern_max = 100  # TODO remove this feature?
     lp_time = 0
     inv_time = 0
     append_time = 0
@@ -55,17 +55,15 @@ def length_nest_pro(part_lengths, b, part_names, spacing, left_waste, right_wast
     #     part_lengths[i] = random.random()*3+2
     #     b[i] = round(random.random()*1000)
 
-    # print(part_lengths)
-    # print(b)
-    # print(part_numbers)
-
     # # #
     # Remove any parts where PartQty is 0 (remove entries from part_lengths and b)
     for i in range(len(b))[::-1]:
         if b[i] == 0:
             b = np.delete(b, i, 0)
             part_lengths = np.delete(part_lengths, i, 0)
-            # part_numbers = np.delete(part_numbers, i, 0)
+            part_names = np.delete(part_names, i, 0)
+
+    b_modified = b
 
     # # #
     # Combine parts with same length?  Must still consider quantities...
@@ -449,7 +447,7 @@ def length_nest_pro(part_lengths, b, part_names, spacing, left_waste, right_wast
     nested = np.dot(patterns, int_allocation)
     new_totals = b.copy()
     new_totals = new_totals - nested
-    print(new_totals)
+    # print(new_totals)
 
     b = new_totals
 
@@ -683,9 +681,7 @@ def length_nest_pro(part_lengths, b, part_names, spacing, left_waste, right_wast
             final_patterns = np.delete(final_patterns, i, 1)
             final_allocations = np.delete(final_allocations, i, 0)
 
-    print(final_patterns)
-    print(final_allocations)
-    return final_patterns, final_allocations, part_lengths, part_names, spacing, left_waste, right_waste, stock_length
+    return final_patterns, final_allocations, part_lengths, part_names, b_modified, spacing, left_waste, right_waste, stock_length
 
     # Write to file
     # with open('output.csv', 'w') as csvfile:

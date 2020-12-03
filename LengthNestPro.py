@@ -158,7 +158,7 @@ class Table(QTableWidget):
             self.enter_was_pressed()
         else:
             super().keyPressEvent(event)
-            print(event.key())
+            # print(event.key())
 
     def delete_cell_contents(self):
         indices = self.selectedIndexes()
@@ -550,9 +550,8 @@ class Window(QMainWindow):
 
         self.repaint()
 
-        if len(part_lengths) != 0 and stock_length != -1 and left_waste != -1 and right_waste != -1 and spacing != -1 \
-                and b.all() != 0:
-            (final_patterns, final_allocations, part_lengths, part_names, spacing, left_waste, right_waste,
+        if len(part_lengths) != 0 and stock_length != -1 and left_waste != -1 and right_waste != -1 and spacing != -1:
+            (final_patterns, final_allocations, part_lengths, part_names, b, spacing, left_waste, right_waste,
              stock_length) = length_nest_pro(part_lengths, b, part_names, spacing, left_waste, right_waste,
                                              stock_length)
 
