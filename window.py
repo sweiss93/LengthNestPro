@@ -18,6 +18,9 @@ class Window(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.setAcceptDrops(True)
+        self.file_path = 0
+
         # Initialize attributes
         self.part_quantities = []
         self.part_lengths = []
@@ -361,6 +364,35 @@ class Window(QMainWindow):
         self.grid_layout.setRowStretch(2, 1)
         self.grid_layout.setRowStretch(3, 1)
 
+    def dragEnterEvent(self, event):
+        if event.mimeData().urls()[0].toLocalFile()[-8:] == ".LNP.xml":
+            event.accept()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().urls()[0].toLocalFile()[-8:] == ".LNP.xml":
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        if event.mimeData().urls()[0].toLocalFile()[-8:] == ".LNP.xml":
+            event.setDropAction(Qt.CopyAction)  # TODO ???
+            self.file_path = event.mimeData().urls()[0].toLocalFile()
+            self.open_call()
+
+            # Reset file_path to 0 to allow for open dialog box again
+            self.file_path = 0
+
+            event.accept()
+        else:
+            event.ignore()
+
+    # def set_image(self, file_path):
+    #     print("end")
+    #     # self.photoViewer.setPixmap(QPixmap(file_path))
+
     # Create table class
     class Table(QTableWidget):
         def __init__(self):
@@ -480,77 +512,79 @@ class Window(QMainWindow):
 
     def open_call(self):
 
-        # Allow user to select xml file to open
-        file_path = 0
-        if file_path == 0:
+        # Allow user to select xml file to open, or use file path from drag and drop
+        if self.file_path == 0:
             file_path = QFileDialog.getOpenFileName(QFileDialog(), "", self.default_path_string,
                                                     "LengthNestPro xml (*.LNP.xml)")[0]
-            if file_path:
-                tree = ElementTree.parse(file_path)
-                nesting_job = tree.getroot()
+        else:
+            file_path = self.file_path
 
-                # Create blank list with length equal to the number of parts in the nesting job
-                blank_list = []
-                required_parts = nesting_job.find('requiredParts')
-                for i in range(len(required_parts)):
-                    blank_list.append(QTableWidgetItem(""))
+        if file_path:  # Make sure the user selected a file before trying to open one
+            tree = ElementTree.parse(file_path)
+            nesting_job = tree.getroot()
 
-                # Copy blank list to initialize each attribute
-                name = blank_list.copy()
-                qty = blank_list.copy()
-                length = blank_list.copy()
+            # Create blank list with length equal to the number of parts in the nesting job
+            blank_list = []
+            required_parts = nesting_job.find('requiredParts')
+            for i in range(len(required_parts)):
+                blank_list.append(QTableWidgetItem(""))
 
-                # Clear contents from table
-                self.t1.clearContents()
+            # Copy blank list to initialize each attribute
+            name = blank_list.copy()
+            qty = blank_list.copy()
+            length = blank_list.copy()
 
-                # Extract info for each part and add it to "required parts" table
-                for i, part in enumerate(required_parts):
-                    name[i] = QTableWidgetItem(part.find('name').text)
-                    qty[i] = QTableWidgetItem(part.find('qty').text)
-                    length[i] = QTableWidgetItem(part.find('length').text)
-                    name[i].setTextAlignment(Qt.AlignCenter)
-                    qty[i].setTextAlignment(Qt.AlignCenter)
-                    length[i].setTextAlignment(Qt.AlignCenter)
-                    self.t1.setItem(i, 0, qty[i])
-                    self.t1.setItem(i, 1, length[i])
-                    self.t1.setItem(i, 2, name[i])
+            # Clear contents from table
+            self.t1.clearContents()
 
-                # Extract nesting settings and add them to "nesting settings" table
-                nesting_settings = nesting_job.find('nestingSettings')
+            # Extract info for each part and add it to "required parts" table
+            for i, part in enumerate(required_parts):
+                name[i] = QTableWidgetItem(part.find('name').text)
+                qty[i] = QTableWidgetItem(part.find('qty').text)
+                length[i] = QTableWidgetItem(part.find('length').text)
+                name[i].setTextAlignment(Qt.AlignCenter)
+                qty[i].setTextAlignment(Qt.AlignCenter)
+                length[i].setTextAlignment(Qt.AlignCenter)
+                self.t1.setItem(i, 0, qty[i])
+                self.t1.setItem(i, 1, length[i])
+                self.t1.setItem(i, 2, name[i])
 
-                if hasattr(nesting_settings.find('stockLength'), 'text'):
-                    stock_length = QTableWidgetItem(nesting_settings.find('stockLength').text)
-                    stock_length.setTextAlignment(Qt.AlignCenter)
-                    self.t2.setItem(0, 0, stock_length)
+            # Extract nesting settings and add them to "nesting settings" table
+            nesting_settings = nesting_job.find('nestingSettings')
 
-                if hasattr(nesting_settings.find('leftWaste'), 'text'):
-                    left_waste = QTableWidgetItem(nesting_settings.find('leftWaste').text)
-                    left_waste.setTextAlignment(Qt.AlignCenter)
-                    self.t2.setItem(1, 0, left_waste)
+            if hasattr(nesting_settings.find('stockLength'), 'text'):
+                stock_length = QTableWidgetItem(nesting_settings.find('stockLength').text)
+                stock_length.setTextAlignment(Qt.AlignCenter)
+                self.t2.setItem(0, 0, stock_length)
 
-                if hasattr(nesting_settings.find('rightWaste'), 'text'):
-                    right_waste = QTableWidgetItem(nesting_settings.find('rightWaste').text)
-                    right_waste.setTextAlignment(Qt.AlignCenter)
-                    self.t2.setItem(2, 0, right_waste)
+            if hasattr(nesting_settings.find('leftWaste'), 'text'):
+                left_waste = QTableWidgetItem(nesting_settings.find('leftWaste').text)
+                left_waste.setTextAlignment(Qt.AlignCenter)
+                self.t2.setItem(1, 0, left_waste)
 
-                if hasattr(nesting_settings.find('spacing'), 'text'):
-                    spacing = QTableWidgetItem(nesting_settings.find('spacing').text)
-                    spacing.setTextAlignment(Qt.AlignCenter)
-                    self.t2.setItem(3, 0, spacing)
+            if hasattr(nesting_settings.find('rightWaste'), 'text'):
+                right_waste = QTableWidgetItem(nesting_settings.find('rightWaste').text)
+                right_waste.setTextAlignment(Qt.AlignCenter)
+                self.t2.setItem(2, 0, right_waste)
 
-                if hasattr(nesting_settings.find('maxPartsPerNest'), 'text'):
-                    max_parts_per_nest = QTableWidgetItem(nesting_settings.find('maxPartsPerNest').text)
-                    max_parts_per_nest.setTextAlignment(Qt.AlignCenter)
-                    self.t2.setItem(4, 0, max_parts_per_nest)
+            if hasattr(nesting_settings.find('spacing'), 'text'):
+                spacing = QTableWidgetItem(nesting_settings.find('spacing').text)
+                spacing.setTextAlignment(Qt.AlignCenter)
+                self.t2.setItem(3, 0, spacing)
 
-                if hasattr(nesting_settings.find('maxContainers'), 'text'):
-                    max_containers = QTableWidgetItem(nesting_settings.find('maxContainers').text)
-                    max_containers.setTextAlignment(Qt.AlignCenter)
-                    self.t2.setItem(5, 0, max_containers)
+            if hasattr(nesting_settings.find('maxPartsPerNest'), 'text'):
+                max_parts_per_nest = QTableWidgetItem(nesting_settings.find('maxPartsPerNest').text)
+                max_parts_per_nest.setTextAlignment(Qt.AlignCenter)
+                self.t2.setItem(4, 0, max_parts_per_nest)
 
-                self.name_of_open_file = file_path
-                self.setWindowTitle(f"LengthNestPro, The free 1D nesting optimizer - {self.name_of_open_file}")
-                self.statusBar().showMessage('Ready')
+            if hasattr(nesting_settings.find('maxContainers'), 'text'):
+                max_containers = QTableWidgetItem(nesting_settings.find('maxContainers').text)
+                max_containers.setTextAlignment(Qt.AlignCenter)
+                self.t2.setItem(5, 0, max_containers)
+
+            self.name_of_open_file = file_path
+            self.setWindowTitle(f"LengthNestPro, The free 1D nesting optimizer - {self.name_of_open_file}")
+            self.statusBar().showMessage('Ready')
 
     def save_call(self):
         # Allow user to select where to save xml file
@@ -605,7 +639,7 @@ class Window(QMainWindow):
 
                 # Initialize parameter to enter while loop
                 no_data_found = 1
-                while no_data_found:
+                while no_data_found and num_parts > 0:
                     # Check if there is any text in each cell
                     for i in range(num_columns):
                         if self.t1.item(num_parts - 1, i) is not None:
@@ -890,20 +924,16 @@ class Window(QMainWindow):
             if name_i:
                 name_text = name_i.text()
 
-            # Extract row if required values are present
+            # Extract row if required values are present and valid
             if qty_text and length_text and name_text:
                 try:
+                    float(length_text)
+                    float(qty_text)
                     self.part_lengths = np.append(self.part_lengths, [float(length_text)], 0)
-                except ValueError:
-                    pass
-                try:
                     self.part_quantities = np.append(self.part_quantities, [float(qty_text)], 0)
-                except ValueError:
-                    pass
-                try:
                     self.part_names = np.append(self.part_names, [name_text], 0)
                 except ValueError:
-                    pass
+                    print("part length and/or part qty and/or part name is invalid")
 
         # Change row vectors to column vectors
         self.part_lengths = np.transpose([self.part_lengths])

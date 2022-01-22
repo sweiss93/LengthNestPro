@@ -451,6 +451,7 @@ class CalculateThread(QObject):
         [final_patterns, final_allocations] = self.length_nest_pro_calculate()
         results = [final_patterns, final_allocations]
         print(f"nesting time was {time.time() - nesting_start_time}")
+        # noinspection PyUnresolvedReferences
         self.results_signal.emit(results)
 
     # TODO add algorithm/option that tends to pick nests that use up a single part faster (reduces the dependency of the
@@ -724,18 +725,25 @@ class CalculateThread(QObject):
             # TODO move this to a better place
             cs = ColumnSorter(self.num_parts, len(self.allocation), self)
 
-            [new_column_order, required_containers] = cs.optimize_sequence(self.patterns, 100, 0)
+            if self.patterns.any():
+                [new_column_order, required_containers] = cs.optimize_sequence(self.patterns, 100, 0)
 
-            # TODO remove second condition later?
-            if required_containers <= self.window.max_containers or temp_max_parts_per_nest == 2:
-                self.patterns = self.patterns.T[new_column_order].T
-                self.int_allocation = self.int_allocation[new_column_order]
+                # TODO remove second condition later?
+                if required_containers <= self.window.max_containers or temp_max_parts_per_nest == 2:
+                    self.patterns = self.patterns.T[new_column_order].T
+                    self.int_allocation = self.int_allocation[new_column_order]
 
+                    chosen_required_lengths = self.required_lengths.copy()
+                    chosen_int_allocation = self.int_allocation.copy()
+                    chosen_patterns = self.patterns.copy()
+                    print(f"Acceptable solution found with 'Max parts per nest' constrained to {i}")
+                    print(f"Requires about {self.required_lengths} lengths")
+                    break
+            else:
                 chosen_required_lengths = self.required_lengths.copy()
                 chosen_int_allocation = self.int_allocation.copy()
                 chosen_patterns = self.patterns.copy()
-                print(f"Acceptable solution found with 'Max parts per nest' constrained to {i}")
-                print(f"Requires about {self.required_lengths} lengths")
+                print(f"No integer solution was found with 'Max parts per nest' constrained to {i}")
                 break
 
         # TODO check for best solution before filling remaining parts
@@ -983,7 +991,8 @@ class CalculateThread(QObject):
                                                 #   should avoid a crash
                                                 skip_to_end = 1
                                             else:
-                                                for qty_index, qty in enumerate(self.patterns.T[rightmost_pattern_index]):
+                                                for qty_index, qty in \
+                                                        enumerate(self.patterns.T[rightmost_pattern_index]):
                                                     if qty:
                                                         highest_in_pattern = qty_index
                                                         break
@@ -1034,7 +1043,7 @@ class CalculateThread(QObject):
             if skip_to_end == 1:
                 final_parts_sublist = np.arange(self.num_parts)
             final_parts_sublist = np.expand_dims(final_parts_sublist, axis=0)
-            if skip_to_end ==1:
+            if skip_to_end == 1:
                 self.branch_bound(self.num_parts, self.window.max_parts_per_nest + num_extra_parts,
                                   self.remaining_part_quantities, final_parts_sublist, 2)
             else:
@@ -1189,7 +1198,10 @@ class CalculateThread(QObject):
             drop_at_end_patterns = self.final_patterns.T[drop_at_end_sequence].T
 
             # Improve max containers further if possible
-            final_sequence_adjustment = cs.optimize_sequence(drop_at_end_patterns, 1, 1)[0]
+            if np.size(drop_at_end_patterns, 1) > 1:
+                final_sequence_adjustment = cs.optimize_sequence(drop_at_end_patterns, 1, 1)[0]
+            else:
+                final_sequence_adjustment = [0]
             possible_pattern_replacement = drop_at_end_patterns.T[final_sequence_adjustment].T
             possible_pattern_replacement = cs.pre_process(possible_pattern_replacement)
 
